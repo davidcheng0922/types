@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package spdkrpc;
+
+option go_package = "github.com/longhorn/types/pkg/generated/spdkrpc";
+
+// NvmeAgentService is a thin gRPC facade over go-spdk-helper NVMe initiator
+// operations. It is intentionally limited to NVMe CLI / kernel state only.
+// The agent does not access SPDK objects, so every RPC must carry all target
+// information required to operate in the agent pod's own network namespace.
+service NvmeAgentService {
+  rpc DiscoverTarget(NvmeDiscoverTargetRequest) returns (NvmeDiscoverTargetResponse);
+  rpc ConnectTarget(NvmeConnectTargetRequest) returns (NvmeConnectTargetResponse);
+  rpc DisconnectTarget(NvmeDisconnectTargetRequest) returns (NvmeDisconnectTargetResponse);
+  rpc DisconnectController(NvmeDisconnectControllerRequest) returns (NvmeDisconnectControllerResponse);
+  rpc GetDevices(NvmeGetDevicesRequest) returns (NvmeGetDevicesResponse);
+  rpc GetSubsystems(NvmeGetSubsystemsRequest) returns (NvmeGetSubsystemsResponse);
+}
+
+// NvmeTarget identifies the remote NVMe/TCP endpoint the agent should talk to.
+// transport_type defaults to the go-spdk-helper default ("tcp") when omitted.
+message NvmeTarget {
+  string transport_address = 1;
+  string transport_service_id = 2;
+  string subsystem_nqn = 3;
+  string transport_type = 4;
+}
+
+message NvmeController {
+  string controller = 1;
+  string transport = 2;
+  string address = 3;
+  string state = 4;
+}
+
+message NvmeNamespace {
+  string namespace_name = 1;
+  int32 nsid = 2;
+  int64 used_bytes = 3;
+  int64 maximum_lba = 4;
+  int64 physical_size = 5;
+  int32 sector_size = 6;
+}
+
+message NvmePath {
+  string name = 1;
+  string transport = 2;
+  string address = 3;
+  string state = 4;
+}
+
+message NvmeSubsystem {
+  string name = 1;
+  string nqn = 2;
+  repeated NvmePath paths = 3;
+}
+
+message NvmeDevice {
+  string subsystem = 1;
+  string subsystem_nqn = 2;
+  repeated NvmeController controllers = 3;
+  repeated NvmeNamespace namespaces = 4;
+}
+
+message NvmeDiscoverTargetRequest {
+  string initiator_name = 1;
+  NvmeTarget target = 2;
+}
+
+message NvmeDiscoverTargetResponse {
+  string subsystem_nqn = 1;
+}
+
+message NvmeConnectTargetRequest {
+  string initiator_name = 1;
+  NvmeTarget target = 2;
+  bool skip_discovery = 3;
+}
+
+message NvmeConnectTargetResponse {
+  string subsystem_nqn = 1;
+  string controller_name = 2;
+  repeated NvmeDevice devices = 3;
+  repeated NvmeSubsystem subsystems = 4;
+}
+
+message NvmeDisconnectTargetRequest {
+  string initiator_name = 1;
+  string subsystem_nqn = 2;
+}
+
+message NvmeDisconnectTargetResponse {}
+
+message NvmeDisconnectControllerRequest {
+  string initiator_name = 1;
+  NvmeTarget target = 2;
+}
+
+message NvmeDisconnectControllerResponse {}
+
+message NvmeGetDevicesRequest {
+  string initiator_name = 1;
+  NvmeTarget target = 2;
+}
+
+message NvmeGetDevicesResponse {
+  repeated NvmeDevice devices = 1;
+}
+
+message NvmeGetSubsystemsRequest {
+  string initiator_name = 1;
+}
+
+message NvmeGetSubsystemsResponse {
+  repeated NvmeSubsystem subsystems = 1;
+}
